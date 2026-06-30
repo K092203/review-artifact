@@ -78,6 +78,7 @@ class CodexBackend(Backend):
             "exec",
             "--sandbox",
             "read-only",
+            "--skip-git-repo-check",
             prompt,
         ]
         return _run_subprocess(
@@ -87,7 +88,7 @@ class CodexBackend(Backend):
             backend_name=self.name,
             prompt_stdin=False,
             timeout=self.config.timeout,
-            display_command="codex exec --sandbox read-only <prompt>",
+            display_command="codex exec --sandbox read-only --skip-git-repo-check <prompt>",
         )
 
 
@@ -128,7 +129,9 @@ def _run_subprocess(
     try:
         result = subprocess.run(
             cmd,
-            input=prompt if prompt_stdin else None,
+            # Empty (not inherited) stdin when not piping the prompt, so CLIs that
+            # read stdin (e.g. codex exec) get EOF instead of blocking.
+            input=prompt if prompt_stdin else "",
             text=True,
             cwd=cwd,
             capture_output=True,

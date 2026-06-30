@@ -12,9 +12,9 @@ Point it at a job's logs (meta.json, stderr, resource), a diff, or any files,
 and save the review as reproducible Markdown/JSON — the reviewer never edits your repo.
 ```
 
-- **Status:** v0.1.0 (pre-release) · MIT · pure standard library, no runtime dependencies
-- **Verified:** 24 tests passing on Python 3.12 / Linux (WSL2), 2026-07-01 — see [Verification](#verification)
-- **Known limitation:** real LLM backends are manually verified only; CI uses the fake backend (see [Known limitations](#known-limitations))
+- **Status:** v0.1.1 · MIT · pure standard library, no runtime dependencies
+- **Verified:** 24 tests (Python 3.12) + a real `codex`/gpt-5.5 end-to-end run, 2026-07-01 — see [Verification](#verification)
+- **Known limitation:** the reject/relocate guard is proven by tests; a real-model hallucination has not (yet) been observed to catch (see [Known limitations](#known-limitations))
 
 ---
 
@@ -149,7 +149,28 @@ no quote (legacy)        | line=4 verified=True     | line=4 verified=True
 
 The two middle rows are the wins: a real quote cited on the wrong line is
 **auto-corrected**, and a fabricated quote that the old check happily "verified"
-is now **rejected**.
+is now **rejected**. (These rows use crafted findings; see the honest caveat in
+the real-LLM run below.)
+
+### Real-LLM end-to-end (codex / gpt-5.5)
+
+Run for real on 2026-07-01 with the `codex` backend (`codex exec --sandbox read-only`):
+
+```bash
+review-artifact logs examples/sample-results --backend codex
+```
+
+Across two real runs (the sample logs and a 60-line iterative log), gpt-5.5
+produced **8 findings / 7 citations, and every citation was verbatim and on the
+correct line** — cross-checked by hand against the source. The guard caused
+**zero false rejections**; e.g. on the 60-line log it pinned the divergence to
+`stdout.txt:41` (`iter 41: residual=nan`) among 60 near-identical lines.
+
+**Honest caveat:** gpt-5.5 did **not** fabricate a citation in these runs, so the
+*reject/relocate* path was exercised only by the deterministic tests and the
+before/after table above — **not** by a real-model mistake. The real run proves
+the loop works end-to-end with a real LLM and that the guard does not damage
+correct output; it does **not** yet show a real hallucination being caught.
 
 ### Test suite — 24 passing
 
@@ -224,8 +245,14 @@ review-artifact logs runs/latest      # read-only AI triage of the snapshot
 
 ## Known limitations
 
-- **Real LLM backends (`llm`, `codex`) are manually verified only.** CI and the
-  automated tests use the `fake` backend so no network/API call is made.
+- **`codex`/gpt-5.5 verified end-to-end (2026-07-01); `llm` backend not yet run.**
+  CI and automated tests use the `fake` backend (no network/API). In the real
+  `codex` runs the model did not fabricate a citation, so the reject/relocate path
+  is proven by deterministic tests + the before/after table, **not** yet by a
+  caught real-model hallucination.
+- **Verification confirms the citation, not the conclusion.** A finding can quote
+  a real line and still draw a wrong inference; `line_verified` means the quote is
+  real, not that the finding is correct. Findings are advisory.
 - **Read-only strength depends on the backend's sandbox.** The CLI itself only
   reads, but it cannot guarantee a backend won't take actions of its own.
 - **Line verification and JSON findings are best-effort.** When the reviewer's
