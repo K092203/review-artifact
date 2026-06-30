@@ -12,7 +12,7 @@ Point it at a job's logs (meta.json, stderr, resource), a diff, or any files,
 and save the review as reproducible Markdown/JSON — the reviewer never edits your repo.
 ```
 
-- **状态：** v0.1.1 · MIT · 纯标准库，无运行时依赖
+- **状态：** v0.1.2 · MIT · 纯标准库，无运行时依赖
 - **已验证：** 24 项测试（Python 3.12）+ 一次真实的 `codex`/gpt-5.5 端到端运行，2026-07-01 —— 见[验证](#验证)
 - **已知限制：** reject/relocate 防护已由测试证明；尚未观测到捕获一次真实模型的幻觉（见[已知限制](#已知限制)）
 

@@ -12,7 +12,7 @@ Point it at a job's logs (meta.json, stderr, resource), a diff, or any files,
 and save the review as reproducible Markdown/JSON — the reviewer never edits your repo.
 ```
 
-- **Status:** v0.1.1 · MIT · pure standard library, no runtime dependencies
+- **Status:** v0.1.2 · MIT · pure standard library, no runtime dependencies
 - **Verified:** 24 tests (Python 3.12) + a real `codex`/gpt-5.5 end-to-end run, 2026-07-01 — see [Verification](#verification)
 - **Known limitation:** the reject/relocate guard is proven by tests; a real-model hallucination has not (yet) been observed to catch (see [Known limitations](#known-limitations))
 

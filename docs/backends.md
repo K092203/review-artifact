@@ -14,11 +14,16 @@ command = "llm -m gpt-4o"
 
 ## `codex`
 
-Uses Codex CLI in read-only sandbox mode:
+Uses Codex CLI in read-only sandbox mode. review-artifact runs:
 
 ```bash
-codex exec --sandbox read-only <prompt>
+codex exec --sandbox read-only --skip-git-repo-check <prompt>
 ```
+
+`--skip-git-repo-check` lets it run outside a git repository, and the prompt is
+passed as an argument with empty stdin (codex otherwise blocks on "Reading
+additional input from stdin…"). Requires `codex login`. Verified end-to-end with
+gpt-5.5 (see the README "Verification" section).
 
 ## `custom`
 
@@ -41,4 +46,4 @@ review-artifact logs examples/sample-results --backend fake
 
 ## Read-only guarantee
 
-This CLI only **reads** files you point it at. Actual sandbox strength depends on the backend you choose. See [security.md](security.md).
+This CLI only **reads** files you point it at. Actual sandbox strength depends on the backend you choose. See [SECURITY.md](SECURITY.md).
