@@ -182,6 +182,9 @@ CI は同じスイートを Python 3.12 + fake バックエンドで実行しま
 
 ## runledger との組み合わせ
 
+[runledger](https://github.com/K092203/runledger) は review-artifact が triage する
+run snapshot を生成します:
+
 ```bash
 runledger run -- ./solver < input.txt
 review-artifact logs runs/latest      # snapshot を read-only の AI で triage

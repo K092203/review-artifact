@@ -185,6 +185,9 @@ Examples: [examples/sample-results](examples/sample-results) (fake-backend demo)
 
 ## Pairs with runledger
 
+[runledger](https://github.com/K092203/runledger) captures the run snapshots that
+review-artifact triages:
+
 ```bash
 runledger run -- ./solver < input.txt
 review-artifact logs runs/latest      # read-only AI triage of the snapshot
