@@ -1,4 +1,4 @@
-> 🌐 **日本語版 README は [README.ja.md](README.ja.md) にあります。**
+> 🌐 [English](README.md) · [日本語](README.ja.md) · [中文](README.zh.md)
 
 # review-artifact
 

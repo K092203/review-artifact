@@ -1,4 +1,4 @@
-> 🌐 **English README is at [README.md](README.md).**
+> 🌐 [English](README.md) · [日本語](README.ja.md) · [中文](README.zh.md)
 
 # review-artifact
 
