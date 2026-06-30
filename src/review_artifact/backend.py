@@ -195,6 +195,7 @@ Sample job appears to have timed out before completion.
 
 ## Findings
 - **medium**: Job did not reach completed status; stderr shows deadline reached.
+- **low**: A second finding cites evidence that is not in the logs (to demonstrate rejection).
 
 ## Open Questions
 - Was the walltime limit sufficient for this input size?
@@ -206,10 +207,20 @@ Sample job appears to have timed out before completion.
     {
       "severity": "medium",
       "title": "Job timed out",
-      "body": "status.txt never reached completed; stderr mentions deadline reached.",
-      "file": "results/latest/stderr.txt",
-      "line": 42,
+      "body": "stderr reports the deadline was reached before completion.",
+      "file": "examples/sample-results/stderr.txt",
+      "line": 2,
+      "evidence": "deadline reached",
       "confidence": "medium"
+    },
+    {
+      "severity": "low",
+      "title": "Claimed segfault (fabricated evidence)",
+      "body": "Reviewer claims a segfault, but no such text exists in the logs.",
+      "file": "examples/sample-results/stderr.txt",
+      "line": 4,
+      "evidence": "Segmentation fault (core dumped)",
+      "confidence": "low"
     }
   ],
   "open_questions": ["Was the walltime limit sufficient for this input size?"]

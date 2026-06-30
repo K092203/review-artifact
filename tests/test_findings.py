@@ -93,6 +93,43 @@ def test_line_verification_out_of_range():
     assert verified.line_verified is False
 
 
+def test_evidence_corroborated_verifies():
+    finding = Finding(
+        severity="info", title="E", body="b", file="a.txt", line=2, evidence="needle"
+    )
+    verified = verify_finding(finding, {"a.txt": ["first", "has needle here", "third"]})
+    assert verified.line == 2
+    assert verified.line_verified is True
+    assert verified.line_relocated is False
+
+
+def test_evidence_relocates_to_real_line():
+    # cited line is wrong, but the quoted evidence is real -> auto-correct the line
+    finding = Finding(
+        severity="info", title="E", body="b", file="a.txt", line=1, evidence="needle"
+    )
+    verified = verify_finding(finding, {"a.txt": ["first", "second", "has needle here"]})
+    assert verified.line == 3
+    assert verified.line_verified is True
+    assert verified.line_relocated is True
+
+
+def test_evidence_not_found_is_rejected():
+    # plausible, in-range line, but the quoted evidence does not exist -> rejected
+    finding = Finding(
+        severity="info",
+        title="E",
+        body="b",
+        file="a.txt",
+        line=2,
+        evidence="Segmentation fault (core dumped)",
+    )
+    verified = verify_finding(finding, {"a.txt": ["first", "second", "third"]})
+    assert verified.line is None
+    assert verified.line_verified is False
+    assert verified.file == "a.txt"  # the real file is kept; only the bad line is dropped
+
+
 def test_parse_without_json_fallback():
     raw = "## Summary\n\nSomething failed.\n\n## Open Questions\n\n- Why?"
     bundle = CollectionBundle(target="ask")

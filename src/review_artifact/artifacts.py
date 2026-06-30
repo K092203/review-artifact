@@ -184,12 +184,18 @@ def render_markdown(
             if f.file:
                 loc = f" ({f.file}"
                 if f.line is not None:
-                    verified = "verified" if f.line_verified else "unverified"
-                    loc += f":{f.line}, {verified}"
+                    status = "verified" if f.line_verified else "unverified"
+                    if f.line_relocated:
+                        status += ", relocated"
+                    loc += f":{f.line}, {status}"
+                elif f.evidence:
+                    loc += ", citation rejected: evidence not found"
                 loc += ")"
             lines.append(f"- **{f.severity}**: {f.title}{loc}")
             if f.body:
                 lines.append(f"  {f.body}")
+            if f.evidence and f.line_verified:
+                lines.append(f"  evidence: `{f.evidence}`")
     else:
         lines.append("(no structured findings extracted)")
 

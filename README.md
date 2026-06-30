@@ -13,7 +13,7 @@ and save the review as reproducible Markdown/JSON — the reviewer never edits y
 ```
 
 - **Status:** v0.1.0 (pre-release) · MIT · pure standard library, no runtime dependencies
-- **Verified:** 21 tests passing on Python 3.12 / Linux (WSL2), 2026-06-30 — see [Verification](#verification)
+- **Verified:** 24 tests passing on Python 3.12 / Linux (WSL2), 2026-07-01 — see [Verification](#verification)
 - **Known limitation:** real LLM backends are manually verified only; CI uses the fake backend (see [Known limitations](#known-limitations))
 
 ---
@@ -41,9 +41,12 @@ as an artifact. Diff review is supported but secondary.
 
 1. **Read-only by contract** — the CLI only reads what it collects; the prompt
    tells the reviewer it cannot edit. No agent mutates your repo.
-2. **Line citations are verified** — LLMs hallucinate file/line. Every cited
-   `file`/`line` is checked against the actually-collected content; unverifiable
-   ones are nulled (`line_verified: false`). Findings are always advisory.
+2. **Citations are evidence-checked** — LLMs hallucinate file/line. The reviewer
+   must **quote the exact text** it is citing, and that quote is verified against
+   the actually-collected content. A **fabricated quote is rejected**
+   (`line_verified: false`), and a **real quote on the wrong line is
+   auto-corrected** (`line_relocated: true`). A plain line-existence check is the
+   fallback when no quote is given. Findings are always advisory.
 3. **Secrets are skipped by default** — `.env`, `*.pem`, `*token*`, etc. are not
    collected unless you pass `--allow-sensitive`.
 
@@ -97,9 +100,11 @@ review-artifact ask "question" --files src/foo.cpp
       "severity": "medium",
       "title": "...",
       "body": "...",
-      "file": null,
-      "line": null,
-      "line_verified": false,
+      "file": "examples/sample-results/stderr.txt",
+      "line": 2,
+      "evidence": "deadline reached",
+      "line_verified": true,
+      "line_relocated": false,
       "confidence": "medium"
     }
   ],
@@ -125,18 +130,38 @@ See [docs/backends.md](docs/backends.md).
 
 ## Verification
 
-Captured on **Python 3.12.3 / Linux 6.18 (WSL2) / 2026-06-30**.
+Captured on **Python 3.12.3 / Linux 6.18 (WSL2) / 2026-07-01**.
 
-### Test suite — 21 passing
+### Line verification — existence-only vs evidence-checked
+
+The headline feature, proven against the real `examples/sample-results/stderr.txt`
+(`line 2 = "ERROR: deadline reached before completion"`). The old check only asked
+"does this line exist?"; the new one asks "is the quoted evidence actually there?":
+
+```text
+case                     | BEFORE (exists?)         | AFTER (evidence-checked)
+-------------------------|--------------------------|------------------------------
+correct citation         | line=2 verified=True     | line=2 verified=True
+right quote, wrong line  | line=5 verified=True     | line=2 verified=True relocated
+FABRICATED evidence      | line=4 verified=True     | line=None verified=False
+no quote (legacy)        | line=4 verified=True     | line=4 verified=True
+```
+
+The two middle rows are the wins: a real quote cited on the wrong line is
+**auto-corrected**, and a fabricated quote that the old check happily "verified"
+is now **rejected**.
+
+### Test suite — 24 passing
 
 ```text
 tests/test_artifacts.py  2   (artifact naming, markdown + json writers)
 tests/test_cli.py        3   (logs/diff/files via fake backend)
 tests/test_collect.py    7   (git/file/dir collectors, size limit, binary + secret skip)
 tests/test_config.py     4   (defaults, TOML override, merge)
-tests/test_findings.py   5   (JSON extraction, line verification valid/invalid/out-of-range)
+tests/test_findings.py   8   (JSON extraction; line verification: exists / evidence
+                              corroborated / relocated / fabricated-rejected)
                         ---
-                         21   passed in 0.18s
+                         24   passed in 0.24s
 ```
 
 ### Behavioral checks (end-to-end, fake backend)
@@ -144,20 +169,24 @@ tests/test_findings.py   5   (JSON extraction, line verification valid/invalid/o
 | Behavior | Command | Observed |
 |----------|---------|----------|
 | Log triage (primary) | `logs examples/sample-results --backend fake` | wrote `.review/…-logs….md` + `.json` |
-| **Line verification** | fake cites `results/latest/stderr.txt:42` | collected file was `examples/sample-results/stderr.txt` → normalized to `file=null line=null line_verified=false` |
+| **Evidence verified** | fake cites `stderr.txt:2` evidence `"deadline reached"` | quote found at line 2 → `line_verified=true` |
+| **Fabricated rejected** | fake cites a `"Segmentation fault"` not in the logs | `line=null line_verified=false`, marked *citation rejected* |
 | Dry-run (no AI call) | `logs … --dry-run` | prints the exact collected bundle, calls nothing |
 | **Secret guard** | `files .env --dry-run` | `skipped .env: sensitive` (needs `--allow-sensitive` to include) |
 | Backend selection | `--backend bogus` | `invalid choice … (llm, codex, custom, fake)`, `exit=2` |
 
-Representative output:
+Representative output (the Markdown artifact from the fake backend):
+
+```markdown
+## Findings
+- **medium**: Job timed out (examples/sample-results/stderr.txt:2, verified)
+  stderr reports the deadline was reached before completion.
+  evidence: `deadline reached`
+- **low**: Claimed segfault (fabricated evidence) (examples/sample-results/stderr.txt, citation rejected: evidence not found)
+  Reviewer claims a segfault, but no such text exists in the logs.
+```
 
 ```console
-$ review-artifact logs examples/sample-results --backend fake
-wrote .review/20260630-235029-logs-examples-sample-results.md
-wrote .review/20260630-235029-logs-examples-sample-results.json
-# findings[0].file = null, line = null, line_verified = false
-#   (the fake reviewer cited results/latest/stderr.txt:42, which was NOT collected)
-
 $ review-artifact files .env --dry-run
 --- COLLECTION NOTES ---
 skipped .env: sensitive

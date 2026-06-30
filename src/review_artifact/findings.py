@@ -17,7 +17,9 @@ class Finding:
     body: str
     file: str | None = None
     line: int | None = None
+    evidence: str | None = None
     line_verified: bool = False
+    line_relocated: bool = False
     confidence: str = "medium"
 
     def to_dict(self) -> dict[str, Any]:
@@ -27,7 +29,9 @@ class Finding:
             "body": self.body,
             "file": self.file,
             "line": self.line,
+            "evidence": self.evidence,
             "line_verified": self.line_verified,
+            "line_relocated": self.line_relocated,
             "confidence": self.confidence,
         }
 
@@ -68,12 +72,14 @@ def parse_review_output(raw_output: str, bundle: CollectionBundle) -> ParsedRevi
         for item in data.get("findings", []):
             if not isinstance(item, dict):
                 continue
+            evidence = item.get("evidence")
             finding = Finding(
                 severity=str(item.get("severity", "info")),
                 title=str(item.get("title", "")),
                 body=str(item.get("body", "")),
                 file=item.get("file"),
                 line=_coerce_line(item.get("line")),
+                evidence=str(evidence) if evidence else None,
                 confidence=str(item.get("confidence", "medium")),
             )
             parsed.findings.append(finding)
@@ -94,10 +100,19 @@ def verify_findings(findings: list[Finding], bundle: CollectionBundle) -> list[F
 
 
 def verify_finding(finding: Finding, file_contents: dict[str, list[str]]) -> Finding:
-    if finding.file is None or finding.line is None:
+    """Verify a finding's citation against the actually-collected content.
+
+    Strength ladder:
+    1. file must resolve to a collected file, else file/line are nulled;
+    2. if ``evidence`` is given, the quoted text must actually appear in that
+       file — otherwise the citation is rejected (``line_verified=False``).
+       If the evidence is found on a different line than cited, the line is
+       auto-corrected (``line_relocated=True``);
+    3. with no evidence, fall back to a plain line-existence check.
+    """
+    if finding.file is None:
+        finding.line = None
         finding.line_verified = False
-        if finding.line is not None and finding.file is None:
-            finding.line = None
         return finding
 
     normalized = _normalize_path(finding.file)
@@ -115,13 +130,33 @@ def verify_finding(finding: Finding, file_contents: dict[str, list[str]]) -> Fin
         finding.line_verified = False
         return finding
 
-    if 1 <= finding.line <= len(lines):
+    evidence = (finding.evidence or "").strip()
+    if evidence:
+        target = _norm_ws(evidence)
+        matches = [i for i, ln in enumerate(lines, start=1) if target and target in _norm_ws(ln)]
+        if not matches:
+            # quoted evidence is nowhere in the cited file -> hallucinated citation
+            finding.line = None
+            finding.line_verified = False
+        elif finding.line in matches:
+            finding.line_verified = True
+        else:
+            finding.line = matches[0]
+            finding.line_relocated = True
+            finding.line_verified = True
+        return finding
+
+    # no evidence quoted: plain existence check
+    if finding.line is not None and 1 <= finding.line <= len(lines):
         finding.line_verified = True
     else:
         finding.line = None
         finding.line_verified = False
-
     return finding
+
+
+def _norm_ws(text: str) -> str:
+    return " ".join(text.split())
 
 
 def _build_file_index(bundle: CollectionBundle) -> dict[str, list[str]]:
